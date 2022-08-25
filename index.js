@@ -106,20 +106,45 @@ app.post('/api/users/:_id/exercises', (req, res) => {
           console.log("Final Date: ", finalDate);
         
           var logs = {date: finalDate, duration: req.body.duration, description: req.body.description};  
-          User.updateOne({_id: userID}, { $push: { log: logs } }, (err, docs) => {
+          User.updateOne({_id: userID}, { $push: { log: logs } },  (err, docs) => {
             if(!err){
               console.log("Successful Update of User Record !!!", userID);
-              console.log("Successful Update of User Record !!!", docs2);
+              console.log("Successful Update of User Record !!!", docs);
               res.json({_id: userID, username: userNameFetchedDB, date: finalDate, duration: req.body.duration, description: req.body.description});
             } else {
               console.log("Update Error Msg", err)
               res.json({"error": "Failed to update User Record"})
             }
           });
+
+          User.updateOne({_id: userID}, { $inc: {count: 1} }, (err, docs) => {
+            if(!err){
+              console.log("Successful Update of Count !!!", userID);
+            } else {
+              console.log("Update Error Msg", err)
+              res.json({"error": "Failed to update Exercise Count"})
+            }
+          });
       }
-    })
-    
+    }) 
 });
+
+//Route to Get all the logs of a particular User
+app.get("/api/users/:_id/logs", (req, res) => {
+  let userID = req.params._id;
+  console.log("The User ID passed is: ", userID)
+  const{ from, to, limit } = req.query;
+  console.log("The Query parameters passed are: ", from ," ",to ," ", limit)
+
+
+  User.findOne({_id: userID},{ _id: 1, __v:0, "log._id": 0 },(err, docs) => {
+    if(!docs){
+      res.json({"error": "no user exists with given ID"})
+    } else {
+      res.json(docs);
+    }
+  })
+})
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
