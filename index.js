@@ -105,12 +105,14 @@ app.post('/api/users/:_id/exercises', (req, res) => {
           finalDate = [sampleDate[0], sampleDate[2], sampleDate[1], sampleDate[3]].join(' ');
           console.log("Final Date: ", finalDate);
         
+          var durationNumberFormat = parseInt(req.body.duration, 10);
+        
           var logs = {date: finalDate, duration: req.body.duration, description: req.body.description};  
           User.updateOne({_id: userID}, { $push: { log: logs } },  (err, docs) => {
             if(!err){
               console.log("Successful Update of User Record !!!", userID);
               console.log("Successful Update of User Record !!!", docs);
-              res.json({_id: userID, username: userNameFetchedDB, date: finalDate, duration: req.body.duration, description: req.body.description});
+              res.json({_id: userID, username: userNameFetchedDB, date: finalDate, duration: durationNumberFormat, description: req.body.description});
             } else {
               console.log("Update Error Msg", err)
               res.json({"error": "Failed to update User Record"})
