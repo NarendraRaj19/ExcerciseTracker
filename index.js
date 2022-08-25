@@ -89,28 +89,27 @@ app.post('/api/users/:_id/exercises', (req, res) => {
         res.json({"error": "no user exists with given ID"})
       } else {
         let inputDate = req.body.date;
-        var d = new Date(inputDate).toUTCString();
-        if(d === "Invalid Date"){
-            d = new Date().toUTCString();
-        } 
-          var userNameFetchedDB = docs.username;
-          console.log("The date Generated is: ", d );
-          console.log("The date Generated is: ", d.substring(0,16));
-          d = d.substring(0,16);
-          d = d.replace(/,/g, '');
-          console.log("The date Generated is: ", d );
+        var userNameFetchedDB = docs.username;
 
-          var sampleDate = d.split(" ")
-          var finalDate = "";
-          finalDate = [sampleDate[0], sampleDate[2], sampleDate[1], sampleDate[3]].join(' ');
-          console.log("Final Date: ", finalDate);
-        
-          var logs = {date: finalDate, duration: req.body.duration, description: req.body.description};  
+        //Converting the input Date to the format "Sun Jan 01 1956 00:00:00 GMT+0000 (GMT)" using toString()
+        var responseDate = new Date(inputDate).toString();
+        if(responseDate === 'Invalid Date'){
+            console.log("Inside Invalid Date !!")
+            responseDate = new Date().toString().substring(0,15);
+        } else {
+            responseDate = responseDate.substring(0,15);
+        }
+
+        //Storing in DB in the ISOFormat for ease of date range querying
+        var dateStored = new Date(responseDate).toISOString().substring(0,10);
+          
+          //Exercise Logs
+          var logs = {date: dateStored, duration: req.body.duration, description: req.body.description};  
           User.updateOne({_id: userID}, { $push: { log: logs } },  (err, docs) => {
             if(!err){
               console.log("Successful Update of User Record !!!", userID);
               console.log("Successful Update of User Record !!!", docs);
-              res.json({_id: userID, username: userNameFetchedDB, date: finalDate, duration: req.body.duration, description: req.body.description});
+              res.json({_id: userID, username: userNameFetchedDB, date: responseDate, duration: parseInt(req.body.duration, 10), description: req.body.description});
             } else {
               console.log("Update Error Msg", err)
               res.json({"error": "Failed to update User Record"})
@@ -129,6 +128,7 @@ app.post('/api/users/:_id/exercises', (req, res) => {
     }) 
 });
 
+
 //Route to Get all the logs of a particular User
 app.get("/api/users/:_id/logs", (req, res) => {
   let userID = req.params._id;
@@ -136,14 +136,47 @@ app.get("/api/users/:_id/logs", (req, res) => {
   const{ from, to, limit } = req.query;
   console.log("The Query parameters passed are: ", from ," ",to ," ", limit)
 
+  User.findById(userID, {__v: 0, "log._id": 0}, (err, result) => {
+    
+  
+    let responseObject = result;
 
-  User.findOne({_id: userID},{ _id: 1, __v:0, "log._id": 0 },(err, docs) => {
-    if(!docs){
-      res.json({"error": "no user exists with given ID"})
-    } else {
-      res.json(docs);
+    let fromDate = new Date(0);
+    let toDate = new Date();
+
+    if(from){
+        fromDate = new Date(from);
     }
+
+    if(to){
+      toDate = new Date(to);
+    }
+
+    fromDate = fromDate.getTime()
+    toDate = toDate.getTime()
+
+    console.log("The values are: ", fromDate ," ", toDate )
+
+    responseObject.log = responseObject.log.filter((session) => {
+      let sessionDate = new Date(session.date).getTime()
+
+      return sessionDate >= fromDate && sessionDate <= toDate
+    })
+
+    // console.log("The Size of the Log is: ", responseObject.log.length)
+
+    //Removing the logs from the array if a limit value is specified
+    if(limit){
+        responseObject.count = limit;
+        responseObject.log = responseObject.log.slice(0, limit);
+    }
+
+    responseObject.count = responseObject.log.length;
+
+    res.json(responseObject)
   })
+
+  
 })
 
 const listener = app.listen(process.env.PORT || 3000, () => {
