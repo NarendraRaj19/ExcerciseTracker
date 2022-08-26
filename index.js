@@ -21,7 +21,7 @@ console.log("State of Mongoose: ",mongoose.connection.readyState);
 let User = mongoose.model('User', {
   username: { type: String },
   count: {type: Number, default: 0},
-  log: [{description: {type: String}, duration: {type: Number}, date: {type: String} }]  
+  log: [{description: {type: String, required: true}, duration: {type: Number, required: true}, date: String }]  
 })
 
 //Schema to store User's exercise logs
@@ -96,6 +96,7 @@ app.post('/api/users/:_id/exercises', (req, res) => {
         if(responseDate === 'Invalid Date'){
             console.log("Inside Invalid Date !!")
             responseDate = new Date().toString().substring(0,15);
+            console.log("Inside Invalid Date !! ", responseDate)
         } else {
             responseDate = responseDate.substring(0,15);
         }
@@ -109,7 +110,7 @@ app.post('/api/users/:_id/exercises', (req, res) => {
             if(!err){
               console.log("Successful Update of User Record !!!", userID);
               console.log("Successful Update of User Record !!!", docs);
-              res.json({_id: userID, username: userNameFetchedDB, date: responseDate, duration: parseInt(req.body.duration, 10), description: req.body.description});
+              res.json({_id: userID, username: userNameFetchedDB, date: responseDate, duration: parseInt(req.body.duration,10), description: req.body.description});
             } else {
               console.log("Update Error Msg", err)
               res.json({"error": "Failed to update User Record"})
@@ -158,12 +159,17 @@ app.get("/api/users/:_id/logs", (req, res) => {
     console.log("The values are: ", fromDate ," ", toDate )
 
     responseObject.log = responseObject.log.filter((session) => {
+      let actualDate = session.date;
       let sessionDate = new Date(session.date).getTime()
 
-      return sessionDate >= fromDate && sessionDate <= toDate
+      if(sessionDate >= fromDate && sessionDate <= toDate){
+        actualDate = new Date(actualDate).toString().substring(0,15);
+        session.date = actualDate;
+        console.log(actualDate, " ", typeof(actualDate))
+        return actualDate;
+      }
     })
 
-    // console.log("The Size of the Log is: ", responseObject.log.length)
 
     //Removing the logs from the array if a limit value is specified
     if(limit){
